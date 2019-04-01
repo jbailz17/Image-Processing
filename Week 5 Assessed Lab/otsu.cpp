@@ -72,7 +72,7 @@ class Otsu {
 
                 // Foreground weight equals all the other pixels not located in the background.
                 weightForeground = total - weightBackground;
-                // If foreground weight = 0 theb break out of the loop.
+                // If foreground weight = 0 then break out of the loop.
                 if (weightForeground == 0) {
                     break;
                 }
@@ -191,7 +191,7 @@ class Otsu {
 
             // Set binary values based on threshold value.
             for(int i = dataOffset; i < img.size(); i += 3) {
-                if (int(img[i] & 0xff) < threshold) {
+                if (int(img[i] & 0xff) <= threshold) {
                     img[i] = 0x00;
                     img[i+1] = 0x00;
                     img[i+2] = 0x00;
