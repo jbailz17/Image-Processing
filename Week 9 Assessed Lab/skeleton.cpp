@@ -14,6 +14,8 @@ class Image {
         int32_t height = 0;
         int32_t width = 0;
 
+        bool skeletonComplete = false;
+
         // Update current stored image data.
         void setImg(std::vector<char> img) {
             dataOffset = *reinterpret_cast<int32_t *>(&img[10]);
@@ -111,46 +113,85 @@ class Image {
             return threshold;
         }
 
-        void thinningItr() {
-            std::vector< std::vector<int> > structEl1 = {{0,0,0}, 
-                                                         {0,1,0},
-                                                         {1,1,1}};
+        void applyMask(std::vector< std::vector<int> > mask) {
 
-            std::vector< std::vector<int> > structEl2 = {{0,0,0},
-                                                         {1,1,0},
-                                                         {0,1,0}};
-
-            std::vector< std::vector<int> > structEl3 = {{1,0,0}, 
-                                                         {1,1,0},
-                                                         {1,0,0}};
-                                                         
-            std::vector< std::vector<int> > structEl4 = {{0,1,0},
-                                                         {1,1,0},
-                                                         {0,0,0}};
-
-            std::vector< std::vector<int> > structEl5 = {{1,1,1}, 
-                                                         {0,1,0},
-                                                         {0,0,0}};
-                                                         
-            std::vector< std::vector<int> > structEl6 = {{0,1,0},
-                                                         {0,1,1},
-                                                         {0,0,0}};
-
-            std::vector< std::vector<int> > structEl7 = {{0,0,1}, 
-                                                         {0,1,1},
-                                                         {0,0,1}};
-                                                         
-            std::vector< std::vector<int> > structEl8 = {{0,0,0},
-                                                         {0,1,1},
-                                                         {0,1,0}};
+            bool fit = true;
 
             std::vector< std::vector<char> > img = currentImgData;
 
-            for(int i = 0; i < img.size(); i++) {
-                for(int j = 0; j < img[i].size(); j += 3) {
-                    
+            for (int i = 0; i < img.size(); i++) {
+                for (int j = 0; j < img[i].size(); j += 3) {
+                    if (int(img[i][j] & 0xff) == 255) {
+                        fit = true;
+                        for (int x = 0; x < mask.size(); x++) {
+                            for (int y = 0; y < mask[x].size(); y ++) {
+                                int index = i + (x - 1);
+                                int index2 = j + ((y - 1) * 3);
+                                // std::cout << "Index: " << index << " : " << index2;
+                                // std::cout << " : " << int(img[index][index2] & 0xff);
+                                // std::cout << " : " << mask[x][y] << std::endl;
+                                if (mask[x][y] != 1) {
+                                    if (int(currentImgData[index][index2] & 0xff) != mask[x][y]){
+                                        fit = false;
+                                    }
+                                }
+                            }
+                        }
+                        // std::cout << fit << std::endl;
+                        // std::cout << std::endl;
+                        if (fit) {
+                            img[i][j] = 0x00;
+                            img[i][j+1] = 0x00;
+                            img[i][j+2] = 0x00;
+                        }
+                    }
                 }
             }
+            // std::cout << std::endl;
+            currentImgData = img;
+        }
+
+        void thinningItr() {
+            std::vector< std::vector<int> > structEl1 = {{0,0,0}, 
+                                                         {1,255,1},
+                                                         {255,255,255}};
+
+            std::vector< std::vector<int> > structEl2 = {{1,0,0},
+                                                         {255,255,0},
+                                                         {1,255,1}};
+
+            std::vector< std::vector<int> > structEl3 = {{255,1,0}, 
+                                                         {255,255,0},
+                                                         {255,1,0}};
+                                                         
+            std::vector< std::vector<int> > structEl4 = {{1,255,1},
+                                                         {255,255,0},
+                                                         {1,0,0}};
+
+            std::vector< std::vector<int> > structEl5 = {{255,255,255}, 
+                                                         {1,255,1},
+                                                         {0,0,0}};
+                                                         
+            std::vector< std::vector<int> > structEl6 = {{1,255,1},
+                                                         {0,255,255},
+                                                         {0,0,1}};
+
+            std::vector< std::vector<int> > structEl7 = {{0,1,255}, 
+                                                         {0,255,255},
+                                                         {0,1,255}};
+                                                         
+            std::vector< std::vector<int> > structEl8 = {{0,0,1},
+                                                         {0,255,255},
+                                                         {1,255,1}};
+
+            applyMask(structEl1);
+            applyMask(structEl2);
+            applyMask(structEl3);
+            applyMask(structEl4);
+            applyMask(structEl5);
+            applyMask(structEl6);
+            applyMask(structEl7);
+            applyMask(structEl8);
         }
 
         // Open bitmap file and read the contents.
@@ -279,6 +320,13 @@ class Image {
         }
 
         void createSkeleton() {
+            int count = 1;
+            do {
+                thinningItr();
+                std::cout << count++ << std::endl;
+            }
+            while (count < 180);
+            writeFile("skeleton.bmp");
             return;
         }
 };
@@ -290,5 +338,6 @@ int main() {
     std::getline(std::cin, fName);
     skeletonImg.createGrayscale(fName);
     skeletonImg.createBinary();
+    skeletonImg.createSkeleton();
     return 0;
 }
