@@ -11,16 +11,16 @@ class Image {
         std::vector< std::vector<char> > currentImgData = {{}};
         std::vector<int> currentHist = {};
         int32_t dataOffset = 0;
-        int32_t height = 0;
-        int32_t width = 0;
+        uint32_t height = 0;
+        uint32_t width = 0;
 
         bool skeletonComplete = false;
 
         // Update current stored image data.
         void setImg(std::vector<char> img) {
             dataOffset = *reinterpret_cast<int32_t *>(&img[10]);
-            width = *reinterpret_cast<int32_t *>(&img[18]);
-            height = *reinterpret_cast<int32_t *>(&img[22]);
+            width = *reinterpret_cast<uint32_t *>(&img[18]);
+            height = *reinterpret_cast<uint32_t *>(&img[22]);
 
             std::cout << "Width: " << width << std::endl;
 
@@ -118,31 +118,46 @@ class Image {
 
         void addImagePadding() {
             
-            std::vector<char> newRow((width * 3), 0);
+            std::vector<char> newRow((width * 3), 0x00);
+
+            // int padding = (width * 4) - (width * 3);
+
+            // for(int i = 0; i < newRow.size() - padding; i += 3) {
+            //     newRow[i] = 0xff;
+            //     newRow[i+1] = 0xff;
+            //     newRow[i+2] = 0xff;
+            // }
 
             std::cout << "Size : " << currentImgData.size();
 
-            // currentImgData.resize(height + 1);
+            width = width + 2;
+            height = height + 2;
+            currentImgHeader[34] = sizeof(width * height * 4);
+            currentImgHeader[18] = width;
+            currentImgHeader[22] = height;
+
             currentImgData.insert(currentImgData.begin(), newRow);
             currentImgData.push_back(newRow);
 
             std::cout << " : " << currentImgData.size() << std::endl;
 
             for (int i = 0; i < currentImgData.size(); i++) {
-                // currentImgData[i].resize((width * 3) + 3);
-                // currentImgData[i][0] = 0xff;
-                // currentImgData[i].push_back(0x00);
-                // currentImgData[i].push_back(0x00);
-                // currentImgData[i].push_back(0x00);
-                currentImgData[i].insert(currentImgData[i].end(), 0x00);
-                currentImgData[i].insert(currentImgData[i].end() - 1, 0x00);
-                currentImgData[i].insert(currentImgData[i].end() - 2, 0xff);
-                currentImgData[i].insert(currentImgData[i].begin(), 0xff);
+            //     // currentImgData[i].resize((width * 3) + 3);
+                    // currentImgData[i][0] = 0xff;
+                    currentImgData[i].push_back(0x00);
+                    currentImgData[i].push_back(0x00);
+                    currentImgData[i].push_back(0x00);
+                    // currentImgData[i].push_back(0);
+                // currentImgData[i].insert((currentImgData[i].end() - padding), 0x00);
+                // currentImgData[i].insert((currentImgData[i].end() - padding) - 1, 0x00);
+                // currentImgData[i].insert((currentImgData[i].end() - padding) - 2, 0xff);
+                currentImgData[i].insert(currentImgData[i].begin(), 0x00);
                 currentImgData[i].insert(currentImgData[i].begin() + 1, 0x00);
                 currentImgData[i].insert(currentImgData[i].begin() + 2, 0x00);
+                currentImgData[i].insert(currentImgData[i].begin() + 3, 0);
             }
 
-            currentImgData[4][8] = 0xff;
+            // currentImgData[4][8] = 0xff;
             // currentImgData[1][1] = 0xff;
             // currentImgData[1][2] = 0xff;
             
@@ -166,12 +181,7 @@ class Image {
             // currentImgData[1].push_back(0xff);
             // currentImgData[1].push_back(0x00);
 
-
-            width = width + 2;
-            height = height + 2;
-            currentImgHeader[18] = width;
-            currentImgHeader[22] = height;
-            // currentImgHeader[34] = char((currentImgHeader.size() * sizeof(currentImgHeader[0])) + (currentImgData.size() * sizeof(currentImgData[0])));
+            // currentImgHeader[34] = sizeof(width * height * 3);
             std::cout << "Size: " << int(currentImgHeader[18] & 0xff);
 
             std::cout << "Width: " <<  height << " : " << currentImgData[2].size() << std::endl;
@@ -300,9 +310,11 @@ class Image {
             auto dataOffset = *reinterpret_cast<uint32_t *>(&header[10]);
             auto width = *reinterpret_cast<uint32_t *>(&header[18]);
             auto height = *reinterpret_cast<uint32_t *>(&header[22]);
+            
+            std::cout << "original width: " << width << " : " << width*4 << std::endl;
 
             // Read remaining image file.
-            auto dataSize = (dataOffset + ((width * height) * 3));
+            auto dataSize = (dataOffset + ((width * height) * 4));
             std::vector<char> img(dataSize);
             
             imageFile.seekg(0, std::ios::beg);
@@ -325,7 +337,7 @@ class Image {
                 return;
             }
 
-            auto dataSize = (dataOffset + ((width * height) * 3));
+            auto dataSize = (dataOffset + ((width * height) * 4));
             std::vector<char> newImg(dataSize);
 
             std::copy(currentImgHeader.begin(), currentImgHeader.end(), newImg.begin());
@@ -338,11 +350,12 @@ class Image {
                     if(i == 200) {
                         // std::cout << j << " : " << int(newImg[index] & 0xff) << std::endl;
                     }
-                    ++index;
+                    index++;
                 }
             }
             
             // Write image data to the file.
+            // std::cout << "Size: " << currentImgData.size() * currentImgData[0].size() << " : " << (((height * width) * 3)) << std::endl;
             newImage.write(newImg.data(), newImg.size());
             newImage.close();
 
@@ -368,6 +381,7 @@ class Image {
                     int grayValue = (int(img[i][j] & 0xff) * 0.0722) +
                                 (int(img[i][j+1] & 0xff) * 0.7152) +
                                 (int(img[i][j+2] & 0xff) * 0.2126);
+                    // img[i][j] = 0x00;
                     img[i][j] = grayValue;
                     img[i][j+1] = grayValue;
                     img[i][j+2] = grayValue;
@@ -429,7 +443,7 @@ int main() {
     std::cout << "Enter image file name: ";
     std::getline(std::cin, fName);
     skeletonImg.createGrayscale(fName);
-    skeletonImg.createBinary();
-    skeletonImg.createSkeleton();
+    // skeletonImg.createBinary();
+    // skeletonImg.createSkeleton();
     return 0;
 }
