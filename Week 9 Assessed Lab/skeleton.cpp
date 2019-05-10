@@ -27,7 +27,7 @@ class Image {
 
             int index = 0 + dataOffset;
             currentImgData.resize(height);
-            
+
             for (int i = 0; i < height; i++) {
                 currentImgData[i].resize(width * 3);
                 for (int j = 0; j < (width * 3); j++) {
@@ -115,17 +115,20 @@ class Image {
         }
 
         void addImagePadding() {
-            
+            // Create new row to insert at the top and bottom of image.
             std::vector<char> newRow((width * 3), 0x00);
 
+            // Set new height and width in image header.
             width = width + 2;
             height = height + 2;
             currentImgHeader[18] = width;
             currentImgHeader[22] = height;
 
+            // Insert padding rows to the top and bottom of image.
             currentImgData.insert(currentImgData.begin(), newRow);
             currentImgData.push_back(newRow);
 
+            // Insert padding to both sides of the image.
             for (int i = 0; i < currentImgData.size(); i++) {
 
                 currentImgData[i].push_back(0x00);
@@ -148,10 +151,12 @@ class Image {
             bool fit = true;
 
             std::vector< std::vector<char> > img = currentImgData;
-
+            
+            // Iterate through each pixel.
             for (int i = 0; i < img.size(); i++) {
                 for (int j = 0; j < img[i].size(); j += 3) {
-
+                    
+                    // Don't apply mask to the padding around the border.
                     if ( i == 0){
                         continue;
                     }
@@ -164,16 +169,19 @@ class Image {
                     if (j == (img[i].size() - 1)) {
                         continue;
                     }
-
+                    
+                    // Iterate through each mask element.
                     if (int(img[i][j] & 0xff) == 255) {
                         fit = true;
                         for (int x = 0; x < mask.size(); x++) {
                             for (int y = 0; y < mask[x].size(); y ++) {
-
+                                // Find the index for the corresponding pixel value.
                                 int index1 = i + (x - 1);
                                 int index2 = j + ((y - 1) * 3);
                                 if (mask[x][y] != 1) {
+                                    // Compare mask value with corresponding pixel value.
                                     if (int(currentImgData[index1][index2] & 0xff) != mask[x][y]){
+                                        // If mask doesn't fit, break from loop.
                                         fit = false;
                                         break;
                                     }
@@ -184,6 +192,7 @@ class Image {
                                 break;
                             }
                         }
+                        // If mask fits set pixel to background.
                         if (fit) {
                             img[i][j] = 0x00;
                             img[i][j+1] = 0x00;
@@ -192,11 +201,13 @@ class Image {
                     }
                 }
             }
+            // Set current image data to resulting image.
             currentImgData = img;
             return;
         }
 
         void thinningItr() {
+            // Create masks to apply to each individual pixel.
             std::vector< std::vector<int> > structEl1 = {{0,0,0}, 
                                                          {1,255,1},
                                                          {255,255,255}};
@@ -229,8 +240,10 @@ class Image {
                                                          {0,255,255},
                                                          {1,255,1}};
 
+            // Create an original copy of the image.
             std::vector< std::vector<char> > original = currentImgData;
-
+            
+            // Apply all the mask to each pixel.
             applyMask(structEl1);
             applyMask(structEl2);
             applyMask(structEl3);
@@ -240,6 +253,7 @@ class Image {
             applyMask(structEl7);
             applyMask(structEl8);
 
+            // If the orignal image is the same as the new image set skeleton to complete.
             if (original == currentImgData) {
                 skeletonComplete = true;
             }
@@ -373,24 +387,33 @@ class Image {
             return;
         }
 
+        // Create a skeleton version of the currently stored binary image.
         void createSkeleton() {
             std::cout << "Creating skeleton...\n";
+            // Add paddinng around the border of the image.
             addImagePadding();
             do {
+                // Thin the image until a skeleton is created.
                 thinningItr();
             }
             while (skeletonComplete == false);
+            // Write the resulting image to "skeleton.bmp".
             writeFile("skeleton.bmp");
             std::cout << "Skeleton created.\n";
             return;
         }
 };
 
+// Main function
 int main() {
     Image skeletonImg;
     std::string fName = "";
+
+    // Retrieve image file name.
     std::cout << "Enter image file name: ";
     std::getline(std::cin, fName);
+
+    // Create images in correct order.
     skeletonImg.createGrayscale(fName);
     skeletonImg.createBinary();
     skeletonImg.createSkeleton();
