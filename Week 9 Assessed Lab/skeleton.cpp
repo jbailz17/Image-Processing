@@ -22,11 +22,14 @@ class Image {
             width = *reinterpret_cast<int32_t *>(&img[18]);
             height = *reinterpret_cast<int32_t *>(&img[22]);
 
+            std::cout << "Width: " << width << std::endl;
+
             currentImgHeader.resize(dataOffset);
             std::copy(img.begin(), img.begin() + (dataOffset + 1), currentImgHeader.begin());
 
             int index = 0 + dataOffset;
             currentImgData.resize(height);
+            std::cout << "Size: " << currentImgData.size() << std::endl;
             for (int i = 0; i < height; i++) {
                 currentImgData[i].resize(width * 3);
                 for (int j = 0; j < (width * 3); j++) {
@@ -113,35 +116,65 @@ class Image {
             return threshold;
         }
 
-        void padImage() {
+        void addImagePadding() {
+            
+            std::vector<char> newRow((width * 3), 0);
 
-            std::vector< std::vector<char> > img = currentImgData;
+            std::cout << "Size : " << currentImgData.size();
 
-            std::vector<char> emptyVector(width);
+            // currentImgData.resize(height + 1);
+            currentImgData.insert(currentImgData.begin(), newRow);
+            currentImgData.push_back(newRow);
 
-            for (int i = 0; i < img.size(); i++) {
-                // if (i == 0) {
-                //     img.insert(0, emptyVector);
-                // }
-                for (int j = 0; j < img[i].size(); j++) {
-                    if (i == 0) {
-                        img[i].insert(j, 0x00);
-                        continue;
-                    }
-                    if (i == (img.size() - 1)){
-                        img[i].insert(j, 0x00);
-                        continue;
-                    }
-                    if (j == 0) {
-                        img[i].insert(0, 0x00);
-                        continue;
-                    }
-                    if (j == img[i].size() - 1) {
-                        img[i].insert(img.size() - 1, 0x00);
-                        continue;
-                    }
-                }
-            }    
+            std::cout << " : " << currentImgData.size() << std::endl;
+
+            for (int i = 0; i < currentImgData.size(); i++) {
+                // currentImgData[i].resize((width * 3) + 3);
+                // currentImgData[i][0] = 0xff;
+                // currentImgData[i].push_back(0x00);
+                // currentImgData[i].push_back(0x00);
+                // currentImgData[i].push_back(0x00);
+                currentImgData[i].insert(currentImgData[i].end(), 0x00);
+                currentImgData[i].insert(currentImgData[i].end() - 1, 0x00);
+                currentImgData[i].insert(currentImgData[i].end() - 2, 0xff);
+                currentImgData[i].insert(currentImgData[i].begin(), 0xff);
+                currentImgData[i].insert(currentImgData[i].begin() + 1, 0x00);
+                currentImgData[i].insert(currentImgData[i].begin() + 2, 0x00);
+            }
+
+            currentImgData[4][8] = 0xff;
+            // currentImgData[1][1] = 0xff;
+            // currentImgData[1][2] = 0xff;
+            
+
+            // for(int i = 0; i < currentImgData[453].size(); i++) {
+                // currentImgData[50].resize((width * 3) + 2);
+            //     // currentImgData[453][i] = 0xff;
+            //     // std::cout << i << " : " << int(currentImgData[1][i] & 0xff) << std::endl;
+            //     // if (i % 3 == 0) {
+            //     //     currentImgData[100][i] = 107;
+            //     // }
+            // }
+
+            // width = currentImgData[0].size();
+            // height = currentImgData.size();
+            
+            // currentImgData[0].push_back(0x00);
+            // currentImgData[0].push_back(0x00);
+            // currentImgData[0].push_back(0xff);
+            // currentImgData[1].push_back(0x00);
+            // currentImgData[1].push_back(0xff);
+            // currentImgData[1].push_back(0x00);
+
+
+            width = width + 2;
+            height = height + 2;
+            currentImgHeader[18] = width;
+            currentImgHeader[22] = height;
+            // currentImgHeader[34] = char((currentImgHeader.size() * sizeof(currentImgHeader[0])) + (currentImgData.size() * sizeof(currentImgData[0])));
+            std::cout << "Size: " << int(currentImgHeader[18] & 0xff);
+
+            std::cout << "Width: " <<  height << " : " << currentImgData[2].size() << std::endl;
         }
 
         void applyMask(std::vector< std::vector<int> > mask) {
@@ -301,7 +334,11 @@ class Image {
             std::vector< std::vector<char> > img = currentImgData;
             for (int i = 0; i < img.size(); i++){
                 for (int j = 0; j < img[i].size(); j++){
-                    newImg[index++] = img[i][j];
+                    newImg[index] = img[i][j];
+                    if(i == 200) {
+                        // std::cout << j << " : " << int(newImg[index] & 0xff) << std::endl;
+                    }
+                    ++index;
                 }
             }
             
@@ -339,6 +376,8 @@ class Image {
             
             // Write the greyscale image to "grayscale.bmp" and update the currently stored image.
             currentImgData = img;
+            addImagePadding();
+            std::cout << "Size: " << currentImgData.size() << std::endl;
             writeFile("grayscale.bmp");
             std::cout << "Grayscale Image created. " << std::endl;
             return;
@@ -379,7 +418,7 @@ class Image {
                 std::cout << count++ << std::endl;
             }
             while (skeletonComplete == false);
-            writeFile("skeleton2.bmp");
+            writeFile("skeleton.bmp");
             return;
         }
 };
