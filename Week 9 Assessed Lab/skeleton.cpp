@@ -113,6 +113,37 @@ class Image {
             return threshold;
         }
 
+        void padImage() {
+
+            std::vector< std::vector<char> > img = currentImgData;
+
+            std::vector<char> emptyVector(width);
+
+            for (int i = 0; i < img.size(); i++) {
+                // if (i == 0) {
+                //     img.insert(0, emptyVector);
+                // }
+                for (int j = 0; j < img[i].size(); j++) {
+                    if (i == 0) {
+                        img[i].insert(j, 0x00);
+                        continue;
+                    }
+                    if (i == (img.size() - 1)){
+                        img[i].insert(j, 0x00);
+                        continue;
+                    }
+                    if (j == 0) {
+                        img[i].insert(0, 0x00);
+                        continue;
+                    }
+                    if (j == img[i].size() - 1) {
+                        img[i].insert(img.size() - 1, 0x00);
+                        continue;
+                    }
+                }
+            }    
+        }
+
         void applyMask(std::vector< std::vector<int> > mask) {
 
             bool fit = true;
@@ -121,20 +152,36 @@ class Image {
 
             for (int i = 0; i < img.size(); i++) {
                 for (int j = 0; j < img[i].size(); j += 3) {
+                    if ( i == 0){
+                        continue;
+                    }
+                    if (i == (img.size() - 1)) {
+                        continue;
+                    } 
+                    if ( j == 0) {
+                        continue;
+                    }
+                    if (j == (img[i].size() - 1)) {
+                        continue;
+                    }
                     if (int(img[i][j] & 0xff) == 255) {
                         fit = true;
                         for (int x = 0; x < mask.size(); x++) {
                             for (int y = 0; y < mask[x].size(); y ++) {
-                                int index = i + (x - 1);
+                                int index1 = i + (x - 1);
                                 int index2 = j + ((y - 1) * 3);
                                 // std::cout << "Index: " << index << " : " << index2;
                                 // std::cout << " : " << int(img[index][index2] & 0xff);
                                 // std::cout << " : " << mask[x][y] << std::endl;
                                 if (mask[x][y] != 1) {
-                                    if (int(currentImgData[index][index2] & 0xff) != mask[x][y]){
+                                    if (int(currentImgData[index1][index2] & 0xff) != mask[x][y]){
                                         fit = false;
+                                        break;
                                     }
                                 }
+                            }
+                            if (!fit) {
+                                break;
                             }
                         }
                         // std::cout << fit << std::endl;
@@ -184,6 +231,8 @@ class Image {
                                                          {0,255,255},
                                                          {1,255,1}};
 
+            std::vector< std::vector<char> > original = currentImgData;
+
             applyMask(structEl1);
             applyMask(structEl2);
             applyMask(structEl3);
@@ -192,6 +241,10 @@ class Image {
             applyMask(structEl6);
             applyMask(structEl7);
             applyMask(structEl8);
+
+            if (original == currentImgData) {
+                skeletonComplete = true;
+            }
         }
 
         // Open bitmap file and read the contents.
@@ -325,8 +378,8 @@ class Image {
                 thinningItr();
                 std::cout << count++ << std::endl;
             }
-            while (count < 180);
-            writeFile("skeleton.bmp");
+            while (skeletonComplete == false);
+            writeFile("skeleton2.bmp");
             return;
         }
 };
