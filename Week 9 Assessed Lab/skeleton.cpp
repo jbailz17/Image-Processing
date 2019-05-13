@@ -157,16 +157,7 @@ class Image {
                 for (int j = 0; j < img[i].size(); j += 3) {
                     
                     // Don't apply mask to the padding around the border.
-                    if ( i == 0){
-                        continue;
-                    }
-                    if (i == (img.size() - 1)) {
-                        continue;
-                    } 
-                    if ( j == 0) {
-                        continue;
-                    }
-                    if (j == (img[i].size() - 1)) {
+                    if ( i == 0 || i == (img.size() - 1) || j == 0 || j == (img[i].size() - 1 )){
                         continue;
                     }
                     
